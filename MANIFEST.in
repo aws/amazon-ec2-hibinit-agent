@@ -1,0 +1,4 @@
+include README.md LICENSE.txt
+include acpid.sleep.conf
+include acpid.sleep.sh
+include hibinit-agent.service
