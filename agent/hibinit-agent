@@ -316,22 +316,25 @@ class Config(object):
     def __str__(self):
         return str(self.__dict__)
 
-def findHibernationEnabled():
+def hibernationEnabled():
+    """Returns a boolean indicating whether hibernation is enabled or not."""
     response = None
     try:
         response = urlopen(URL)
-        return response.read()
+        data = response.read()
+        if data.lower() == 'false':
+            return False
     except:
         return False
     finally:
         if response:
             response.close()
+    return True
 
 def main():
-    response = findHibernationEnabled()
-    if response.lower()=="False".lower():
-        log("Instance Launch have not enabled Hibernation Configured Flag. Hibinit-agent exiting!!")
-        exit(0) 
+    if not hibernationEnabled():
+        log("Instance Launch has not enabled Hibernation Configured Flag. hibinit-agent exiting!!")
+        exit(0)
     # Validate if disk space>total RAM
     ram_bytes = os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
     if get_rootfs_size()<=(math.ceil(float(ram_bytes)/(1024*1024*1024))):
