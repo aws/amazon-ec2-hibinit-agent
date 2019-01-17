@@ -87,8 +87,10 @@ def get_rootfs_size():
 def patch_grub_config(swap_device, offset):
     log("Updating GRUB to use the device %s with offset %d for resume" % (swap_device, offset))
     cmd = "grubby --update-kernel=ALL --args='no_console_suspend={console} resume_offset={offset} resume={swap_device}'"
+    fsfreeze = "sync && mountpoint -q / && fsfreeze -f / && fsfreeze -u /"
     cmd = cmd.format(console='1', offset=offset, swap_device=swap_device)
     check_call(cmd, shell=True)
+    check_call(fsfreeze, shell=True)
     log("GRUB configuration is updated")
 
 
