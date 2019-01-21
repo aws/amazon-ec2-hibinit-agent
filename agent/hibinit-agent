@@ -18,6 +18,7 @@ import struct
 import sys
 import syslog
 import math
+import signal
 from subprocess import check_call, check_output, STDOUT
 from threading import Thread
 from math import ceil
@@ -47,6 +48,14 @@ def log(message):
 def sigterm_handler(signal, frame):
     #save the state here or do whatever you want
     log('Process killed cleaning up!')
+    cmd = "swapon -s | cut -f1,1 | grep -w {name}"
+    cmd = cmd.format(name=SWAP_FILE)
+    swapoff = "swapoff {filename}"
+    cmd = check_output(cmd, shell=True)
+    if cmd.strip() == SWAP_FILE:
+        print "Turning off swap for cleanup"
+        swapoff = swapoff.format(filename=SWAP_FILE)
+        check_call(swapoff, shell=True)
     if os.path.isfile(SWAP_FILE) and os.access(SWAP_FILE, os.R_OK):
         os.remove(SWAP_FILE)
         exit(0)
@@ -84,11 +93,36 @@ def get_rootfs_size():
     return math.ceil(float(stat.f_bsize * stat.f_blocks)/(1024*1024*1024))
 
 
+#This is only for grub2
+def findGrubMount():
+    confFile = ''
+    pathList = []
+    pathList.append("/etc/grub2-efi.cfg")
+    pathList.append("/boot/grub2/grub.cfg")
+    pathList.append("/boot/grub2-efi/grub.cfg")
+    pathList.append("/etc/grub2.cfg")
+    pathList.append("NULL")
+    cmd = 'stat -L -c %m'
+    for ln in pathList:
+	if ln!='NULL' and os.path.isfile(ln) and os.access(ln, os.R_OK):
+	    break
+    if ln=='NULL':
+	return None
+    cmd = cmd + ' ' + ln
+    mount = check_output(cmd, shell=True)
+    return mount.strip()
+
+
 def patch_grub_config(swap_device, offset):
     log("Updating GRUB to use the device %s with offset %d for resume" % (swap_device, offset))
     cmd = "grubby --update-kernel=ALL --args='no_console_suspend={console} resume_offset={offset} resume={swap_device}'"
-    fsfreeze = "sync && mountpoint -q / && fsfreeze -f / && fsfreeze -u /"
     cmd = cmd.format(console='1', offset=offset, swap_device=swap_device)
+    mount_point = findGrubMount()
+    if mount_point is None:
+	log("Grub configuration is not updated. Grub cannot found under /boot or /etc. Please run manual grub update with resume parameters")
+	return
+    fsfreeze = "sync && mountpoint -q {mount} && trap '' HUP INT QUIT TERM && fsfreeze -f {mount} && fsfreeze -u {mount}"
+    fsfreeze = fsfreeze.format(mount=mount_point)
     check_call(cmd, shell=True)
     check_call(fsfreeze, shell=True)
     log("GRUB configuration is updated")
@@ -410,6 +444,9 @@ def main():
     bi = BackgroundInitializerRunner(sw, config.grub_update)
 
     signal.signal(signal.SIGTERM, sigterm_handler)
+    signal.signal(signal.SIGHUP, sigterm_handler)
+    signal.signal(signal.SIGINT, sigterm_handler)
+    signal.signal(signal.SIGQUIT, sigterm_handler)
     if bi:
         bi.start_init()
 
