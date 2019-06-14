@@ -1,6 +1,6 @@
 Name:           ec2-hibinit-agent
 Version:        1.0.0
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        Hibernation setup utility for AWS EC2
 
 Group:          System Environment/Daemons
@@ -55,6 +55,10 @@ rm -rf $RPM_BUILD_ROOT
 %systemd_postun hibinit-agent.service
 
 %changelog
+
+* Fri Jun 14 2019 Anchal Agarwal <anchalag@amazon.com> - 1.0.0-4
+- Added hibernation re-try logic in case of hibernation failure
+
 * Wed Nov 07 2018 Matt Dees <mattdees@amazon.com> - 1.0.0-2
 - Clean up hibernation configured check
 
