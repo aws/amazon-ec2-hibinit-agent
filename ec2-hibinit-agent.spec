@@ -1,6 +1,6 @@
 Name:           ec2-hibinit-agent
-Version:        1.0.0
-Release:        4%{?dist}
+Version:        1.0.1
+Release:        1%{?dist}
 Summary:        Hibernation setup utility for AWS EC2
 
 Group:          System Environment/Daemons
@@ -25,6 +25,7 @@ An EC2 agent that creates a setup for instance hibernation
 mkdir -p "%{buildroot}%{_unitdir}"
 mkdir -p %{buildroot}%{_sysconfdir}/acpi/events 
 mkdir -p %{buildroot}%{_sysconfdir}/acpi/actions
+mkdir -p %{buildroot}%{_localstatedir}/lib/hibinit-agent
 install -p -m 644 "%{_builddir}/%{name}-%{version}/hibinit-agent.service" %{buildroot}%{_unitdir}
 install -p -m 644 "%{_builddir}/%{name}-%{version}/acpid.sleep.conf" %{buildroot}%{_sysconfdir}/acpi/events/sleepconf
 install -p -m 755 "%{_builddir}/%{name}-%{version}/acpid.sleep.sh" %{buildroot}%{_sysconfdir}/acpi/actions/sleep.sh
@@ -41,6 +42,8 @@ install -p -m 755 "%{_builddir}/%{name}-%{version}/acpid.sleep.sh" %{buildroot}%
 %config(noreplace) %attr(0644,root,root) %{_sysconfdir}/acpi/events/sleepconf
 %config(noreplace) %attr(0755,root,root) %{_sysconfdir}/acpi/actions/sleep.sh
 %{python2_sitelib}/*
+%dir %{_localstatedir}/lib/hibinit-agent
+%ghost %attr(0600,root,root) %{_localstatedir}/lib/hibinit-agent/hibernation-enabled
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -55,6 +58,9 @@ rm -rf $RPM_BUILD_ROOT
 %systemd_postun hibinit-agent.service
 
 %changelog
+* Thu Jan 23 2020 Frederick Lefebvre <fredlef@amazon.com> - 1.0.1-1
+- Added IMDSv2 support
+- Renamed spec file to match the actual package name
 
 * Fri Jun 14 2019 Anchal Agarwal <anchalag@amazon.com> - 1.0.0-4
 - Added hibernation re-try logic in case of hibernation failure
