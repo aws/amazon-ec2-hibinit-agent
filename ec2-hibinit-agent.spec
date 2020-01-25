@@ -1,6 +1,6 @@
 Name:           ec2-hibinit-agent
 Version:        1.0.1
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Hibernation setup utility for AWS EC2
 
 Group:          System Environment/Daemons
@@ -55,9 +55,12 @@ rm -rf $RPM_BUILD_ROOT
 %systemd_preun hibinit-agent.service
 
 %postun
-%systemd_postun hibinit-agent.service
+%systemd_postun_with_restart hibinit-agent.service
 
 %changelog
+* Fri Jan 24 2020 Frederick Lefebvre <fredlef@amazon.com> - 1.0.1-2
+- Restart the hibinit-agent service on upgrade
+
 * Thu Jan 23 2020 Frederick Lefebvre <fredlef@amazon.com> - 1.0.1-1
 - Added IMDSv2 support
 - Renamed spec file to match the actual package name

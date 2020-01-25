@@ -377,7 +377,7 @@ def create_state_dir(state_dir):
 def hibernation_enabled(state_dir):
     """Returns a boolean indicating whether hibernation is enabled or not.
 
-    Hibernation can't be enabled/disabled the instance launch. If we find
+    Hibernation can't be enabled/disabled after the instance launch. If we find
     hibernation to be enabled, we create a semephore file so that we don't
     have to probe IMDS again. That is useful when a instance is rebooted
     after/if the IMDS http endpoint has been disabled.
