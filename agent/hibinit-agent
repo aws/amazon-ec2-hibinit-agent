@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/libexec/platform-python
 # AWS EC2 HibInit Agent. This agent does several things:
 # 1. Upon startup it checks for sufficient swap space to allow hibernate and fails
 #    if it's present but there's not enough of it.
@@ -54,7 +54,7 @@ def sigterm_handler(signal, frame):
     swapoff = "swapoff {filename}"
     cmd = check_output(cmd, shell=True)
     if cmd.strip() == SWAP_FILE:
-        print "Turning off swap for cleanup"
+        print("Turning off swap for cleanup")
         swapoff = swapoff.format(filename=SWAP_FILE)
         check_call(swapoff, shell=True)
     if os.path.isfile(SWAP_FILE) and os.access(SWAP_FILE, os.R_OK):
@@ -105,12 +105,12 @@ def find_grub_mount():
     pathList.append("NULL")
     cmd = 'stat -L -c %m'
     for ln in pathList:
-	if ln!='NULL' and os.path.isfile(ln) and os.access(ln, os.R_OK):
-	    break
+        if ln!='NULL' and os.path.isfile(ln) and os.access(ln, os.R_OK):
+            break
     if ln=='NULL':
-	return None
+        return None
     cmd = cmd + ' ' + ln
-    mount = check_output(cmd, shell=True)
+    mount = check_output(cmd, shell=True, universal_newlines=True)
     return mount.strip()
 
 
@@ -120,8 +120,8 @@ def patch_grub_config(swap_device, offset):
     cmd = cmd.format(console='1', offset=offset, swap_device=swap_device)
     mount_point = find_grub_mount()
     if mount_point is None:
-	log("Grub configuration is not updated. Grub cannot found under /boot or /etc. Please run manual grub update with resume parameters")
-	return
+        log("Grub configuration is not updated. Grub cannot found under /boot or /etc. Please run manual grub update with resume parameters")
+        return
     fsfreeze = "sync && mountpoint -q {mount} && trap '' HUP INT QUIT TERM && fsfreeze -f {mount} && fsfreeze -u {mount}"
     fsfreeze = fsfreeze.format(mount=mount_point)
     check_call(cmd, shell=True)
@@ -171,15 +171,15 @@ class SwapInitializer(object):
         self.filename = filename
         self.swap_size = swap_size
         self.mkswap = mkswap
-	self.swapoff = swapoff
+        self.swapoff = swapoff
         self.swapon = swapon
         self.touch_swap = touch_swap
 
     def do_allocate(self):
-	log("Allocating %d bytes in %s" % (self.swap_size, self.filename))
+        log("Allocating %d bytes in %s" % (self.swap_size, self.filename))
         with open(self.filename, 'w+') as fl:
             fallocate(fl, self.swap_size)
-	os.chmod(self.filename, 0o600)
+        os.chmod(self.filename, 0o600)
 
     def init_swap(self):
         """
@@ -202,7 +202,7 @@ class SwapInitializer(object):
             log("Swap pre-heating is skipped, the swap blocks won't be touched during "
                 "to ensure they are ready")
             self.init_mkswap()
-	    return
+            return
 
         written = 0
         log("Opening %s for direct IO" % self.filename)
@@ -229,7 +229,7 @@ class SwapInitializer(object):
             if filler_block:
                 filler_block.close()
         log("Swap file %s is ready" % self.filename)
-	self.init_mkswap()
+        self.init_mkswap()
 
 
     def init_mkswap(self):
@@ -252,24 +252,24 @@ class BackgroundInitializerRunner(object):
         self.update_grub = update_grub
 
     def start_init(self):
-	try:
-	    pid = os.fork()
-  	    if pid > 0:
+        try:
+            pid = os.fork()
+            if pid > 0:
             # Exit parent process
-	    	sys.exit(0)
-        except OSError, e:
-	    print >> sys.stderr, "fork failed: %d (%s)" % (e.errno, e.strerror)
-	    sys.exit(1)
+                sys.exit(0)
+        except OSError:
+            print >> sys.stderr, "fork failed: %d" % (OSError)
+            sys.exit(1)
 
         # Configure the child processes environment
-	os.chdir("/")
-	os.setsid()
-	os.umask(0022)
+        os.chdir("/")
+        os.setsid()
+        os.umask(0o22)
 
     def do_async_init(self):
         try:
             self.swapper.init_swap()
-	    update_kernel_swap_offset(self.swapper.swapon, self.swapper.swapoff, self.swapper.filename, self.update_grub)
+            update_kernel_swap_offset(self.swapper.swapon, self.swapper.swapoff, self.swapper.filename, self.update_grub)
         except Exception as ex:
             log("Failed to initialize swap, reason: %s" % str(ex))
             self.error = ex
@@ -360,7 +360,7 @@ class Config(object):
 def get_imds_token(seconds=21600):
     """ Get a token to access instance metadata. """
     log("Requesting new IMDSv2 token.")
-    request_header = {'X-aws-ec2-metadata-token-ttl-seconds': seconds}
+    request_header = {'X-aws-ec2-metadata-token-ttl-seconds': '{}'.format(seconds)}
     token_url = '{}/{}'.format(IMDS_BASEURL, IMDS_API_TOKEN_PATH)
     response = requests.put(token_url, headers=request_header)
     response.close()
@@ -438,8 +438,8 @@ def main():
     # Validate if disk space>total RAM
     ram_bytes = os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
     if get_rootfs_size()<=(math.ceil(float(ram_bytes)/(1024*1024*1024))):
-	log("Insufficient disk space. Cannot create setup for hibernation. Please allocate a larger root device")
-	exit(1)
+        log("Insufficient disk space. Cannot create setup for hibernation. Please allocate a larger root device")
+        exit(1)
 
     target_swap_size = config.swap_mb * 1024 * 1024
     swap_percentage_size = ram_bytes * config.swap_percentage // 100
@@ -457,12 +457,12 @@ def main():
         log("There's sufficient swap available (have %d, need %d)" %
             (cur_swap, target_swap_size))
         update_kernel_swap_offset(config.swapon, config.swapoff, SWAP_FILE, config.grub_update)
-	exit()
+        exit()
     #validate if instance was launched from pre-created image and swap size>=total RAM, if not re-create the swap 
     elif cur_swap > 0 and (cur_swap < target_swap_size - SWAP_RESERVED_SIZE):
         log("Swap already exists! (have %d, need %d), deleting existing swap file %s" %
             (cur_swap, target_swap_size, SWAP_FILE))
-  	os.remove(SWAP_FILE)
+        os.remove(SWAP_FILE)
 
     log("Create swap and initialize it")
     # We need to create swap, but first validate that we have enough free space
