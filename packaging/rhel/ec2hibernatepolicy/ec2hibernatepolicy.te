@@ -1,0 +1,21 @@
+
+module ec2hibernatepolicy 1.0;
+
+require {
+        type init_t;
+        type swapfile_t;
+        type systemd_logind_t;
+        class file { getattr ioctl open read };
+}
+
+#============= init_t ==============
+allow init_t swapfile_t:file ioctl;
+
+#!!!! This avc is allowed in the current policy
+allow init_t swapfile_t:file { open read ioctl };
+
+#============= systemd_logind_t ==============
+
+#!!!! This avc is allowed in the current policy
+#!!!! This av rule may have been overridden by an extended permission av rule
+allow systemd_logind_t swapfile_t:file { getattr ioctl open read };
