@@ -14,7 +14,7 @@
 
 Name:           ec2-hibinit-agent
 Version:        1.0.3
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        Hibernation setup utility for Amazon EC2
 
 License:        ASL 2.0
@@ -42,6 +42,7 @@ An EC2 agent that creates a setup for instance hibernation
  
 %build
 %py3_build_egg
+make -C %{_builddir}/%{project}-%{gittag}/packaging/rhel/ec2hibernatepolicy
 
 %install
 %py3_install_egg
@@ -70,7 +71,7 @@ install -p -m 644 "%{_builddir}/%{project}-%{gittag}/packaging/rhel/tuned.conf" 
 # Install policy modules
 %_format MODULES $x.pp.bz2
 install -d %{buildroot}%{_datadir}/selinux/packages
-install -m 0644 %{_builddir}/%{project}-%{gittag}/packaging/rhel/ec2hibernatepolicy/build/$MODULES \
+install -m 0644 %{_builddir}/%{project}-%{gittag}/packaging/rhel/ec2hibernatepolicy/$MODULES \
         %{buildroot}%{_datadir}/selinux/packages
 
 
@@ -128,6 +129,7 @@ tuned-adm profile $(sed -n 's/^include=//p' %{_sysconfdir}/tuned/nothp_profile/t
 %postun
 %systemd_postun_with_restart hibinit-agent.service
 
+# https://fedoraproject.org/wiki/SELinux/IndependentPolicy
 if [ $1 -eq 0 ]; then
     %selinux_modules_uninstall -s %{selinuxtype} $MODULES
 fi
@@ -137,6 +139,10 @@ fi
 %selinux_relabel_post -s %{selinuxtype}
 
 %changelog
+* Tue Nov 03 2020 Mohamed Aboubakr <mabouba@amazon.com> - 1.0.3-3
+- Moving selinux folder in packaging directory.
+- Use make file to generate .pp.bz2 file
+
 * Fri Oct 02 2020 David Duncan <davdunc@amazon.com> - 1.0.3-2
 - Modify Spec for build requirements
 
