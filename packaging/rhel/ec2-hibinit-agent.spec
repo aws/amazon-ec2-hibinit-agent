@@ -42,6 +42,9 @@ An EC2 agent that creates a setup for instance hibernation
  
 %build
 %py3_build_egg
+
+# Makefile generates pp.bz2 from .tt file. 
+# Generating tt file https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/selinux_users_and_administrators_guide/security-enhanced_linux-the-sepolicy-suite-sepolicy_generate
 make -C %{_builddir}/%{project}-%{gittag}/packaging/rhel/ec2hibernatepolicy
 
 %install
