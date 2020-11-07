@@ -1,7 +1,7 @@
 %global modulenames     ec2hibernatepolicy
 %global selinuxtype     targeted
 %global moduletype      services
-%global gittag          master
+%global gittag          %{name}-%{version}
 %global project         amazon-ec2-hibinit-agent
 %global owner           aws 
 
