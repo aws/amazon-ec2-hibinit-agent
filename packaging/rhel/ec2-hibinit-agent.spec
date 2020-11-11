@@ -1,7 +1,8 @@
+%global release_number  3
 %global modulenames     ec2hibernatepolicy
 %global selinuxtype     targeted
 %global moduletype      services
-%global gittag          master
+%global gittag          %{version}-%{release_number}
 %global project         amazon-ec2-hibinit-agent
 %global owner           aws 
 
@@ -14,12 +15,12 @@
 
 Name:           ec2-hibinit-agent
 Version:        1.0.3
-Release:        3%{?dist}
+Release:        %{release_number}%{?dist}
 Summary:        Hibernation setup utility for Amazon EC2
 
 License:        ASL 2.0
 
-Source0:        https://github.com/%{owner}/%{project}/archive/%{gittag}/%{name}-%{version}.tar.gz
+Source0:        https://github.com/%{owner}/%{project}/archive/v%{gittag}/%{name}-%{version}.tar.gz
 
 BuildArch:  noarch
 
