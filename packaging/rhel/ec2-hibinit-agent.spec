@@ -4,7 +4,6 @@
 %global moduletype      services
 %global gittag          %{version}-%{release_number}
 %global project         amazon-ec2-hibinit-agent
-%global owner           aws 
 
 %global active_tuned_profile  $(cat %{_sysconfdir}/tuned/active_profile)
  
@@ -20,7 +19,7 @@ Summary:        Hibernation setup utility for Amazon EC2
 
 License:        ASL 2.0
 
-Source0:        https://github.com/%{owner}/%{project}/archive/v%{gittag}/%{name}-%{version}.tar.gz
+Source0:        https://github.com/aws/%{project}/archive/v%{gittag}/%{name}-%{version}.tar.gz
 
 BuildArch:  noarch
 
