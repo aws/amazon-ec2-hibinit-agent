@@ -1,8 +1,9 @@
-%global release_number  3
+%{?python_enable_dependency_generator}
+
 %global modulenames     ec2hibernatepolicy
 %global selinuxtype     targeted
 %global moduletype      services
-%global gittag          %{version}-%{release_number}
+%global gittag          %{version}
 %global project         amazon-ec2-hibinit-agent
 
 %global active_tuned_profile  $(cat %{_sysconfdir}/tuned/active_profile)
@@ -14,7 +15,7 @@
 
 Name:           ec2-hibinit-agent
 Version:        1.0.3
-Release:        %{release_number}%{?dist}
+Release:        3%{?dist}
 Summary:        Hibernation setup utility for Amazon EC2
 
 License:        ASL 2.0
@@ -25,14 +26,14 @@ BuildArch:  noarch
 
 BuildRequires: systemd-rpm-macros
 BuildRequires: python3-devel
+BuildRequires: selinux-policy
+BuildRequires: selinux-policy-devel
 
-%selinux_requires
+%{?selinux_requires}
 Requires: acpid 
 Requires: grubby 
-Requires: python3 
 Requires: systemd 
 Requires: tuned
-Requires: python3-setuptools
 
 %description
 An EC2 agent that creates a setup for instance hibernation
@@ -41,14 +42,14 @@ An EC2 agent that creates a setup for instance hibernation
 %autosetup -n %{project}-%{gittag}
  
 %build
-%py3_build_egg
+%py3_build
 
 # Makefile generates pp.bz2 from .tt file. 
 # Generating tt file https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/selinux_users_and_administrators_guide/security-enhanced_linux-the-sepolicy-suite-sepolicy_generate
 make -C %{_builddir}/%{project}-%{gittag}/packaging/rhel/ec2hibernatepolicy
 
 %install
-%py3_install_egg
+%py3_install
 
 mkdir -p %{buildroot}%{python3_sitelib}
 mkdir -p "%{buildroot}%{_unitdir}"
@@ -87,7 +88,7 @@ install -m 0644 %{_builddir}/%{project}-%{gittag}/packaging/rhel/ec2hibernatepol
 %{_bindir}/hibinit-agent
 %config(noreplace) %{_sysconfdir}/acpi/events/sleepconf
 %config(noreplace) %{_sysconfdir}/acpi/actions/sleep.sh
-%{python3_sitelib}/*egg/
+%{python3_sitelib}/ec2_hibinit_agent-*.egg-info/
 %dir %{_localstatedir}/lib/hibinit-agent
 %ghost %attr(0600,root,root) %{_localstatedir}/lib/hibinit-agent/hibernation-enabled
 
