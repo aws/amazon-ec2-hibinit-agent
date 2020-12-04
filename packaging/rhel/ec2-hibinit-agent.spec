@@ -5,8 +5,6 @@
 %global moduletype      services
 %global project         amazon-ec2-hibinit-agent
 
-%global active_tuned_profile  $(cat %{_sysconfdir}/tuned/active_profile)
- 
 # Usage: _format var format
 #   Expand 'modulenames' into various formats as needed
 #   Format must contain '$x' somewhere to do anything useful
@@ -114,23 +112,22 @@ install -m 0644 %{_builddir}/%{project}-%{version}/packaging/rhel/ec2hibernatepo
 %selinux_modules_install -s %{selinuxtype} $MODULES
 
 #
-# Disable THP by switching to  nothp_profile profile
+# Disable THP by switching to nothp_profile profile
 #
-sed -i'' "s/^[#]*\s*include=.*/include=%{active_tuned_profile}/" %{_sysconfdir}/tuned/nothp_profile/tuned.conf
 tuned-adm profile nothp_profile
 
 
 %preun
 %systemd_preun hibinit-agent.service
 
-#
-# Enable THP by switching to nothp_profile profile
-#
-tuned-adm profile $(sed -n 's/^include=//p' %{_sysconfdir}/tuned/nothp_profile/tuned.conf)
-# note that tuned is not enabled and needs to be enabled. 
 
 %postun
 %systemd_postun_with_restart hibinit-agent.service
+
+#
+# Enable THP
+#
+tuned-adm profile virtual-guest
 
 # https://fedoraproject.org/wiki/SELinux/IndependentPolicy
 if [ $1 -eq 0 ]; then
