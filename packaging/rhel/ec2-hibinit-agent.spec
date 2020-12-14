@@ -16,7 +16,7 @@ Release:        3%{?dist}
 Summary:        Hibernation setup utility for Amazon EC2
 
 License:        ASL 2.0
-URL:            https://github.com/aws/%{project}
+URL:            https://github.com/aws/amazon-%{name}
 Source0:        https://github.com/aws/%{project}/archive/v%{version}/%{name}-%{version}.tar.gz
 
 BuildArch:  noarch
