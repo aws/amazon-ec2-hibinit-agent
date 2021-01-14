@@ -95,8 +95,8 @@ install -m 0644 %{_builddir}/%{project}-%{version}/packaging/rhel/ec2hibernatepo
 %dir %{_sysconfdir}/tuned/nothp_profile
 %config(noreplace) %{_sysconfdir}/tuned/nothp_profile/tuned.conf
 
-%config(noreplace) %{_prefix}/lib/systemd/system-sleep/sleep-handler.sh
-%config(noreplace) %{_prefix}/lib/systemd/logind.conf.d/00-hibinit-agent.conf
+%{_prefix}/lib/systemd/system-sleep/sleep-handler.sh
+%{_prefix}/lib/systemd/logind.conf.d/00-hibinit-agent.conf
 %attr(0644,root,root) %{_datadir}/selinux/packages/*.pp.bz2
 
 %pre
