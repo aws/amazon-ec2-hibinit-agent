@@ -140,7 +140,7 @@ fi
 
 %changelog
 * Thu Jan 14 2021 Mohamed Aboubakr <mabouba@amazon.com> - 1.0.4-1
-- Call gurb2-mkconfig in hibernate agent before calling grubby
+- Call grub2-mkconfig in hibernate agent before calling grubby
 
 * Tue Nov 03 2020 Mohamed Aboubakr <mabouba@amazon.com> - 1.0.3-3
 - Moving selinux folder in packaging directory.
