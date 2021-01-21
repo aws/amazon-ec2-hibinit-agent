@@ -124,6 +124,9 @@ def patch_grub_config(swap_device, offset):
         return
     fsfreeze = "sync && mountpoint -q {mount} && trap '' HUP INT QUIT TERM && fsfreeze -f {mount} && fsfreeze -u {mount}"
     fsfreeze = fsfreeze.format(mount=mount_point)
+    mkconfig = "grub2-mkconfig -o {path}"
+    mkconfig = mkconfig.format(path="/boot/grub2/grub.cfg")
+    check_output(mkconfig, shell=True)
     check_call(cmd, shell=True)
     check_call(fsfreeze, shell=True)
     log("GRUB configuration is updated")

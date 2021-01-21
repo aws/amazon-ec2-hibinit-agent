@@ -11,8 +11,8 @@
 %global _format() export %1=""; for x in %{modulenames}; do %1+=%2; %1+=" "; done;
 
 Name:           ec2-hibinit-agent
-Version:        1.0.3
-Release:        3%{?dist}
+Version:        1.0.4
+Release:        1%{?dist}
 Summary:        Hibernation setup utility for Amazon EC2
 
 License:        ASL 2.0
@@ -139,6 +139,9 @@ fi
 %selinux_relabel_post -s %{selinuxtype}
 
 %changelog
+* Thu Jan 14 2021 Mohamed Aboubakr <mabouba@amazon.com> - 1.0.4-1
+- Call gurb-mkconfig in hibernate agent before calling grubby
+
 * Tue Nov 03 2020 Mohamed Aboubakr <mabouba@amazon.com> - 1.0.3-3
 - Moving selinux folder in packaging directory.
 - Use make file to generate .pp.bz2 file
