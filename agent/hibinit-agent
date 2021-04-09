@@ -160,7 +160,7 @@ def update_kernel_swap_offset(swapon, swapoff, filename, grub_update):
     swapoff = swapoff.format(swapfile=filename)
     log("Running: %s" % swapoff)
     check_call(swapoff, shell=True)
-
+    check_call("dracut -a resume -f", shell=True)
 
 def find_device_for_file(filename):
     # Find the mount point for the swap file ('df -P /swap')
