@@ -164,7 +164,7 @@ def update_kernel_swap_offset(swapon, swapoff, filename, grub_update):
 
 def find_device_for_file(filename):
     # Find the mount point for the swap file ('df -P /swap')
-    df_out = check_output(['df', '-P', filename]).decode('ascii')
+    df_out = check_output(['df', '-P', filename]).decode(sys.getfilesystemencoding())
     dev_str = df_out.split("\n")[1].split()[0]
     return dev_str
 
