@@ -129,6 +129,17 @@ def patch_grub_config(swap_device, offset):
     check_output(mkconfig, shell=True)
     check_call(cmd, shell=True)
     check_call(fsfreeze, shell=True)
+
+    # Some of grubby versions need a restart after changing in kernel parameters
+    # echo offset and swap device helps the customer to use the agent immediately
+    # after rpm installation. 
+    echoResumeDeviceCmd = "echo {swap_device} > /sys/power/resume"
+    echoResumeDeviceCmd = echoResumeDeviceCmd.format(swap_device=swap_device)
+    echoResumeOffsetCmd = "echo {offset} > /sys/power/resume_offset"
+    echoResumeOffsetCmd = echoResumeOffsetCmd.format(offset=offset)
+
+    check_output(echoResumeDeviceCmd, shell=True)
+    check_output(echoResumeOffsetCmd, shell=True)
     log("GRUB configuration is updated")
 
 
