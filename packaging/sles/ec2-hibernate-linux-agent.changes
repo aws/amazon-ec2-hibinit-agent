@@ -1,0 +1,25 @@
+-------------------------------------------------------------------
+Tue Jul 12 12:46:18 UTC 2021 - Mohamed Aboubakr <mabouba@amazon.com>
+- Support EC2 Hibernate in Suse Linux Enterprise Server.
+
+  + Call grub2-mkconfig in hibernate agent before calling grubby
+  + Moving selinux folder in packaging directory.
+  + Use make file to generate .pp.bz2 file
+  + Modify Spec for build requirements
+-------------------------------------------------------------------
+Fri Jan  4 12:46:18 UTC 2019 - John Paul Adrian Glaubitz <adrian.glaubitz@suse.com>
+
+- Add patch to override hibernate command with 'systemctl hibernate'
+  + ehla_override-hibernate-command.patch
+
+-------------------------------------------------------------------
+Tue Oct 23 10:18:31 UTC 2018 - John Paul Adrian Glaubitz <adrian.glaubitz@suse.com>
+
+- Initial release (bsc#1098305, bsc#1111755)
+  + Version 1.0.0
+- Include custom systemd service file for agent
+  + ec2-hibernate-linux-agent.service
+- Include patch to handle missing grub-legacy installation
+  + ehla_handle-missing-grub-legacy.patch
+- Exclude SysVInit setup script for agent
+  + enable-ec2-spot-hibernation
