@@ -1,10 +1,11 @@
 #!/bin/sh
 
 PATH=/sbin:/bin:/usr/bin
+swap_priority="${swap_priority:-10}"
 failed='false'
 hibernate()
 {
-        swapon /swap && /usr/sbin/pm-hibernate
+        swapon "--priority=${swap_priority}" /swap && /usr/sbin/pm-hibernate
         if [ $? -ne 0 ]
         then
             logger "Hibernation failed, Sleeping 2 mins before retry"
