@@ -2,9 +2,15 @@
 
 PATH=/sbin:/bin:/usr/bin
 failed='false'
+
+# Hibernation selects the swapfile with highest priority. Since there may be
+# other swapfiles configured, ensure /swap is selected as hibernation
+# target by setting to maximum priority.
+swap_priority=32767
+
 hibernate()
 {
-        swapon /swap && /usr/sbin/pm-hibernate
+        swapon --priority=$swap_priority /swap && /usr/sbin/pm-hibernate
         if [ $? -ne 0 ]
         then
             logger "Hibernation failed, Sleeping 2 mins before retry"
