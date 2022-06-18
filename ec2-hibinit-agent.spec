@@ -30,11 +30,15 @@ install -p -m 644 "%{_builddir}/%{name}-%{version}/hibinit-agent.service" %{buil
 install -p -m 644 "%{_builddir}/%{name}-%{version}/acpid.sleep.conf" %{buildroot}%{_sysconfdir}/acpi/events/sleepconf
 install -p -m 755 "%{_builddir}/%{name}-%{version}/acpid.sleep.sh" %{buildroot}%{_sysconfdir}/acpi/actions/sleep.sh
 
+mkdir -p mkdir -p "%{buildroot}%{_unitdir}/acpid.service.d"
+install -m0644 "%{_builddir}/%{name}-%{version}/acpid-override.conf" "%{buildroot}%{_unitdir}/acpid.service.d"
+
 %files
 %defattr(-,root,root)
 %doc README.md
 %{_sysconfdir}/hibinit-config.cfg
 %{_unitdir}/hibinit-agent.service
+%{_unitdir}/acpid.service.d/acpid-override.conf
 %{_bindir}/hibinit-agent
 %dir %{_sysconfdir}/acpi
 %dir %{_sysconfdir}/acpi/events
