@@ -15,11 +15,11 @@
 Description=Initial hibernation setup job
 DefaultDependencies=no
 After=cloud-config.service
+Wants=acpid.service
 
 [Service]
 Type=forking
 ExecStart=/usr/bin/hibinit-agent -c /etc/hibinit-config.cfg
-ExecStartPost= /bin/systemctl restart acpid.service
 TimeoutSec=0
 
 # Output needs to appear in instance console output

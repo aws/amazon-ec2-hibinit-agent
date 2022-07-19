@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/bash
 
 PATH=/sbin:/bin:/usr/bin
 failed='false'
@@ -8,34 +8,24 @@ failed='false'
 # target by setting to maximum priority.
 swap_priority=32767
 
-hibernate()
-{
-        swapon --priority=$swap_priority /swap && /usr/sbin/pm-hibernate
-        if [ $? -ne 0 ]
-        then
-            logger "Hibernation failed, Sleeping 2 mins before retry"
-            failed='true'
-        else
-            failed='false'
-        fi
-        swapoff /swap
-}
+set -x
 
 case "$2" in
-    SBTN)
+    SBTN|LNXSLPBN:*)
         # The iteration had been placed here to add retry logic to hibernation 
         # in case of failures and to avoid force stop of instances after 20min
+        logger -t hibernate -p user.notice "Got $2 event, going to hibernate"
         for i in 1 2 3
         do
-          hibernate
-          if [ $failed == 'true' ];
-          then
-            sleep 2m
+          if swapon --priority=$swap_priority /swap && sleep 1 && systemctl hibernate; then
+                break
           else
-           break
+                logger -t hibernate -p user.notice "Failed iteration $i"
+                swapoff /swap
+                sleep 10
           fi
        done
        ;;
     *)
-        logger "ACPI action undefined: $2" ;;
+        logger -t hibernate "ACPI action undefined: $2" ;;
 esac
