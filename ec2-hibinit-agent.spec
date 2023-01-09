@@ -10,7 +10,7 @@ BuildArch:      noarch
 BuildRequires:  python2 python2-devel systemd acpid
 %{?systemd_requires}
 
-Requires: acpid grubby
+Requires: acpid grubby pm-utils
 %description
 An EC2 agent that creates a setup for instance hibernation
 
