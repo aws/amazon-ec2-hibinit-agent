@@ -41,6 +41,7 @@ HIB_ENABLED_FILE = "hibernation-enabled"
 IMDS_BASEURL = 'http://169.254.169.254'
 IMDS_API_TOKEN_PATH = 'latest/api/token'
 IMDS_SPOT_ACTION_PATH = 'latest/meta-data/hibernation/configured'
+MAX_SWAP_SIZE_OFFSET_ALLOWED = 100 * 1024 
 
 def log(message):
     if log_to_syslog:
@@ -467,7 +468,11 @@ def main():
         cur_swap = os.path.getsize(SWAP_FILE)
 
     bi = None
-    if cur_swap >= target_swap_size - SWAP_RESERVED_SIZE:
+    if cur_swap > target_swap_size - SWAP_RESERVED_SIZE + MAX_SWAP_SIZE_OFFSET_ALLOWED:
+        log("Swap already exists! (have %d, need %d), deleting existing swap file %s since current swap is sufficiently large and wasting memory" %
+            (cur_swap, target_swap_size, SWAP_FILE))
+        os.remove(SWAP_FILE)
+    elif cur_swap >= target_swap_size - SWAP_RESERVED_SIZE:
         log("There's sufficient swap available (have %d, need %d)" %
             (cur_swap, target_swap_size))
         update_kernel_swap_offset(config.swapon, config.swapoff, SWAP_FILE, config.grub_update)
