@@ -473,7 +473,7 @@ def main():
 
     bi = None
     if cur_swap > target_swap_size - SWAP_RESERVED_SIZE + MAX_SWAP_SIZE_OFFSET_ALLOWED:
-        log("Swap already exists! (have %d, need %d), deleting existing swap file %s since current swap is sufficiently large and wasting memory" %
+        log("Swap already exists! (have %d, need %d), deleting existing swap file %s since current swap is sufficiently large and wasting disk space" %
             (cur_swap, target_swap_size, SWAP_FILE))
         os.remove(SWAP_FILE)
     elif cur_swap >= target_swap_size - SWAP_RESERVED_SIZE:
