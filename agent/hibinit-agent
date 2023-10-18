@@ -9,21 +9,17 @@
 # This file is compatible both with Python 2 and Python 3
 import argparse
 import array
-import atexit
 import ctypes as ctypes
 import fcntl
 import mmap
-import os, signal
+import os
 import struct
 import sys
 import syslog
 import math
 import requests
 import signal
-from subprocess import check_call, check_output, STDOUT
-from threading import Thread
-from math import ceil
-from time import sleep
+from subprocess import check_call, check_output
 
 
 try:
@@ -41,7 +37,7 @@ HIB_ENABLED_FILE = "hibernation-enabled"
 IMDS_BASEURL = 'http://169.254.169.254'
 IMDS_API_TOKEN_PATH = 'latest/api/token'
 IMDS_SPOT_ACTION_PATH = 'latest/meta-data/hibernation/configured'
-MAX_SWAP_SIZE_OFFSET_ALLOWED = 100 * 1024 
+MAX_SWAP_SIZE_OFFSET_ALLOWED = 100 * 1024
 
 def log(message):
     if log_to_syslog:
@@ -147,8 +143,7 @@ def patch_grub_config(swap_device, offset):
        check_output(echoResumeOffsetCmd, shell=True)
     log("GRUB configuration is updated")
 
-
-def update_kernel_swap_offset(swapon, swapoff, filename, grub_update):
+def update_kernel_swap_offset(swapon, swapoff, filename, grub_update, btrfs_enabled):
     swapon = swapon.format(swapfile=filename)
     log("Running: %s" % swapon)
     check_call(swapon, shell=True)
@@ -156,7 +151,11 @@ def update_kernel_swap_offset(swapon, swapoff, filename, grub_update):
 
     statbuf = os.stat(filename)
     dev = statbuf.st_dev
-    offset = get_file_block_number(filename)
+    if btrfs_enabled:
+        getOffset = "btrfs inspect-internal map-swapfile -r {swapfile}".format(swapfile=filename)
+        offset = int(check_output(getOffset, shell=True).decode(sys.getfilesystemencoding()))
+    else:
+        offset = get_file_block_number(filename)
 
     if grub_update:
         dev_str = find_device_for_file(filename)
@@ -166,13 +165,15 @@ def update_kernel_swap_offset(swapon, swapoff, filename, grub_update):
 
     log("Setting swap device to %d with offset %d" % (dev, offset))
 
-    # Set the kernel swap offset, see https://www.kernel.org/doc/Documentation/power/userland-swsusp.txt
-    # From linux/suspend_ioctls.h
-    SNAPSHOT_SET_SWAP_AREA = 0x400C330D
-    buf = struct.pack('LI', offset, dev)
-    with open('/dev/snapshot', 'r') as snap:
-        fcntl.ioctl(snap, SNAPSHOT_SET_SWAP_AREA, buf)
-    log("Done updating the swap offset. Turning swapoff")
+    if not btrfs_enabled:
+        # Set the kernel swap offset, see https://www.kernel.org/doc/Documentation/power/userland-swsusp.txt
+        # From linux/suspend_ioctls.h
+        SNAPSHOT_SET_SWAP_AREA = 0x400C330D
+        buf = struct.pack('LI', offset, dev)
+        with open('/dev/snapshot', 'r') as snap:
+            fcntl.ioctl(snap, SNAPSHOT_SET_SWAP_AREA, buf)
+        log("Done updating the swap offset. Turning swapoff")
+
     swapoff = swapoff.format(swapfile=filename)
     log("Running: %s" % swapoff)
     check_call(swapoff, shell=True)
@@ -186,19 +187,26 @@ def find_device_for_file(filename):
 
 
 class SwapInitializer(object):
-    def __init__(self, filename, swap_size, touch_swap, mkswap, swapoff, swapon):
+    def __init__(self, filename, swap_size, touch_swap, btrfs_enabled, mkswap, swapoff, swapon):
         self.filename = filename
         self.swap_size = swap_size
         self.mkswap = mkswap
         self.swapoff = swapoff
         self.swapon = swapon
         self.touch_swap = touch_swap
+        self.btrfs_enabled = btrfs_enabled
+        self.block_size = 1024
 
     def do_allocate(self):
         log("Allocating %d bytes in %s" % (self.swap_size, self.filename))
         with open(self.filename, 'w+') as fl:
             fallocate(fl, self.swap_size)
         os.chmod(self.filename, 0o600)
+
+    def setup_btrfs(self):
+        no_cow = "truncate -s 0 {swapfile} && chattr +C {swapfile}".format(swapfile=self.filename)
+        log("Setting /swap to No Copy On Write")
+        check_call(no_cow, shell=True)
 
     def init_swap(self):
         """
@@ -215,6 +223,9 @@ class SwapInitializer(object):
                 os.unlink(self.filename)
             except:
                 pass
+
+        if self.btrfs_enabled:
+            self.setup_btrfs()
 
         self.do_allocate()
         if not self.touch_swap:
@@ -264,11 +275,12 @@ class SwapInitializer(object):
 
 
 class BackgroundInitializerRunner(object):
-    def __init__(self, swapper, update_grub):
+    def __init__(self, swapper, update_grub, btrfs_enabled):
         self.swapper = swapper
         self.thread = None
         self.error = None
         self.update_grub = update_grub
+        self.btrfs_enabled = btrfs_enabled
 
     def start_init(self):
         try:
@@ -288,19 +300,19 @@ class BackgroundInitializerRunner(object):
     def do_async_init(self):
         try:
             self.swapper.init_swap()
-            update_kernel_swap_offset(self.swapper.swapon, self.swapper.swapoff, self.swapper.filename, self.update_grub)
+            update_kernel_swap_offset(self.swapper.swapon, self.swapper.swapoff, self.swapper.filename, self.update_grub, self.btrfs_enabled)
         except Exception as ex:
-            log("Failed to initialize swap, reason: %s" % str(ex))
+            log("Failed to initialize swap when using async, reason: %s" % str(ex))
             self.error = ex
 
 
-def swap_needs_touch(swapfile):
+def identify_file_system(swapfile, file_system):
     # Walk the parent directories of the swapfile to find on which
     # filesystem it's mounted
     swap_place = swapfile
     dev = None
     while not dev:
-        swap_place, _ = os.path.split(swap_place)        
+        swap_place, _ = os.path.split(swap_place)
         try:
             dev = find_device_for_file(swap_place)
         except:
@@ -311,7 +323,7 @@ def swap_needs_touch(swapfile):
     with open("/proc/mounts") as fl:
         lines = fl.read().split("\n")
         for ln in lines:
-            if dev in ln and "xfs" in ln:
+            if dev in ln and file_system in ln:
                 return True
     return False
 
@@ -340,7 +352,10 @@ class Config(object):
         self.swapoff = self.merge(get('swap', 'swapoff'), args.swapoff, 'swapoff {swapfile}')
         self.touch_swap = self.merge(
             self.to_bool(get('core', 'touch-swap')), self.to_bool(args.touch_swap),
-            swap_needs_touch(SWAP_FILE))
+            identify_file_system(SWAP_FILE, "xfs"))
+        self.btrfs_enabled = self.merge(
+            self.to_bool(get('core', 'btrfs-enabled')), self.to_bool(args.btrfs_enabled),
+            identify_file_system(SWAP_FILE, "btrfs"))
 
         self.grub_update = self.merge(
             self.to_bool(get('core', 'grub-update')), self.to_bool(args.grub_update), True)
@@ -430,6 +445,7 @@ def main():
     parser.add_argument('-c', '--config', help='Configuration file to use', type=str)
     parser.add_argument("-syslog", "--log-to-syslog", help='Log to syslog', type=str)
     parser.add_argument("-touch", "--touch-swap", help='Do swap initialization', type=str)
+    parser.add_argument("-btrfs", "--btrfs_enabled", help='Sets no copy on write on swap file', dest="btrfs_enabled", type=str)
     parser.add_argument("-grub", "--grub-update", help='Update GRUB config with resume offset', type=str)
     parser.add_argument("-p", "--swap-ram-percentage", help='The target swap size as a percentage of RAM', type=int)
     parser.add_argument("-s", "--swap-target-size-mb", help='The target swap size in megabytes', type=int)
@@ -479,7 +495,7 @@ def main():
     elif cur_swap >= target_swap_size - SWAP_RESERVED_SIZE:
         log("There's sufficient swap available (have %d, need %d)" %
             (cur_swap, target_swap_size))
-        update_kernel_swap_offset(config.swapon, config.swapoff, SWAP_FILE, config.grub_update)
+        update_kernel_swap_offset(config.swapon, config.swapoff, SWAP_FILE, config.grub_update, config.btrfs_enabled)
         exit()
     #validate if instance was launched from pre-created image and swap size>=total RAM, if not re-create the swap 
     elif cur_swap > 0 and (cur_swap < target_swap_size - SWAP_RESERVED_SIZE):
@@ -498,12 +514,12 @@ def main():
         log("There's not enough space (%d present, %d needed) on the device: %s" % (
                 free_bytes, free_space_needed, swap_dev))
         exit(1)
-        log("There's enough space (%d present, %d needed) on the device: %s" % (
-            free_bytes, free_space_needed, swap_dev))
+    log("There's enough space (%d present, %d needed) on the device: %s" % (
+        free_bytes, free_space_needed, swap_dev))
 
-    sw = SwapInitializer(SWAP_FILE, target_swap_size, config.touch_swap,
+    sw = SwapInitializer(SWAP_FILE, target_swap_size, config.touch_swap, config.btrfs_enabled,
                              config.mkswap, config.swapoff, config.swapon)
-    bi = BackgroundInitializerRunner(sw, config.grub_update)
+    bi = BackgroundInitializerRunner(sw, config.grub_update, config.btrfs_enabled)
 
     signal.signal(signal.SIGTERM, sigterm_handler)
     signal.signal(signal.SIGHUP, sigterm_handler)
@@ -514,6 +530,6 @@ def main():
 
     log("kicking child process to initiate the setup")
     bi.do_async_init()
- 
+
 if __name__ == '__main__':
     main()
