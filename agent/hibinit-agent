@@ -30,7 +30,7 @@ except:
 #space reserved for swap headers
 SWAP_RESERVED_SIZE = 16384
 log_to_syslog = True
-SWAP_FILE = '/swap'
+SWAP_FILE = '/swap-hibinit'
 
 DEFAULT_STATE_DIR = '/var/lib/hibinit-agent'
 HIB_ENABLED_FILE = "hibernation-enabled"
