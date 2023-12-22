@@ -1,10 +1,10 @@
 Name:           ec2-hibinit-agent
-Version:        1.0.2
-Release:        7%{?dist}
+Version:        1.0.8
+Release:        8%{?dist}
 Summary:        Hibernation setup utility for AWS EC2
 
 Group:          System Environment/Daemons
-License:         Apache 2.0
+License:        Apache 2.0
 Source0:        ec2-hibinit-agent-%{version}.tar.gz
 BuildArch:      noarch
 BuildRequires:  python2 python2-devel systemd acpid
@@ -23,7 +23,7 @@ An EC2 agent that creates a setup for instance hibernation
 %install
 %{__python2} setup.py install --prefix=usr -O1 --skip-build --root $RPM_BUILD_ROOT
 mkdir -p "%{buildroot}%{_unitdir}"
-mkdir -p %{buildroot}%{_sysconfdir}/acpi/events 
+mkdir -p %{buildroot}%{_sysconfdir}/acpi/events
 mkdir -p %{buildroot}%{_sysconfdir}/acpi/actions
 mkdir -p %{buildroot}%{_localstatedir}/lib/hibinit-agent
 install -p -m 644 "%{_builddir}/%{name}-%{version}/hibinit-agent.service" %{buildroot}%{_unitdir}
@@ -58,6 +58,33 @@ rm -rf $RPM_BUILD_ROOT
 %systemd_postun_with_restart hibinit-agent.service
 
 %changelog
+* Thu Dec 27 2023 Jeff Kim <kjeffsh@amazon.com> - 1.0.7-8
+- Added better termination behaviour with a stop timeout of 2 minutes
+
+* Wed Oct 18 2023 Jeff Kim <kjeffsh@amazon.com> - 1.0.6-7
+- Changed message when removing swap file
+- Adding btrfs-enabled to set No_COW and get offset using btrfs
+
+* Thu Sep 28 2023 Deborshi Saha <ddebs@amazon.com> - 1.0.5-6
+- Add initial Amazon Linux 2022 support
+- Add pm-utils for required package
+- Recreate the swap file if the current size is sufficiently larger
+- Update /sys/power/resume_offset and /sys/power/resume only if present
+
+* Mon May 24 2021 Mohamed Aboubakr <mabouba@amazon.com> - 1.0.4-5
+- Adding spec file for suse Linux
+- swapon with max priority when hibernating
+
+* Mon May 24 2021 Mohamed Aboubakr <mabouba@amazon.com> - 1.0.3-4
+- grub2 mkconfig before grub configuration update
+- Update /sys/power after grub configuration update
+- Adding dracut to recreate initramfs after config update
+
+* Thu Jan 14 2021 Mohamed Aboubakr <mabouba@amazon.com> - 1.0.2-3
+- Add python3 support
+- Support Redhat 8 by adding spec file for redhat and more configuration for acpid
+- Remove config no replace for files that do not exist in etc directory
+
 * Fri Jan 24 2020 Frederick Lefebvre <fredlef@amazon.com> - 1.0.1-2
 - Restart the hibinit-agent service on upgrade
 
@@ -73,3 +100,4 @@ rm -rf $RPM_BUILD_ROOT
 
 * Wed Oct 31 2018 Anchal Agarwal <anchalag@amazon.com> - 1.0.0-1
 - Initial build
+
