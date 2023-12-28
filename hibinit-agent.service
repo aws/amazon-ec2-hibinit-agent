@@ -13,14 +13,18 @@
 
 [Unit]
 Description=Initial hibernation setup job
-DefaultDependencies=no
 After=cloud-config.service
+Wants=acpid.service
 
 [Service]
 Type=forking
 ExecStart=/usr/bin/hibinit-agent -c /etc/hibinit-config.cfg
-ExecStartPost= /bin/systemctl restart acpid.service
-TimeoutSec=0
+TimeoutStartSec=0
+
+# Ensures a graceful shutdown on stop
+TimeoutStopSec=120
+KillMode=mixed
+KillSignal=SIGTERM
 
 # Output needs to appear in instance console output
 StandardOutput=journal+console
