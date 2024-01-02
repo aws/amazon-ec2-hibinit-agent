@@ -1,6 +1,6 @@
 Name:           ec2-hibinit-agent
 Version:        1.0.8
-Release:        8%{?dist}
+Release:        1%{?dist}
 Summary:        Hibernation setup utility for AWS EC2
 
 Group:          System Environment/Daemons
