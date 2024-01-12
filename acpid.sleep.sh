@@ -30,6 +30,7 @@ case "$2" in
           hibernate
           if [ $failed == 'true' ];
           then
+            swapoff /swap
             sleep 2m
           else
            break
