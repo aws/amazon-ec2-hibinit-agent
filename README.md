@@ -5,10 +5,10 @@ The setup is created only on supported instance types.
 
 This agent does several things upon startup:
 1. It checks for sufficient swap space to allow hibernation and fails if not enough space
-2. If there's no swap file or the existing swap file isn't of a sufficient size,
-     it creates it and launches a background thread to touch all of its blocks
-     and makes sure that EBS volumes are pre-warmed.
-3. It updates the offset of the swap file in the kernel using SNAPSHOT_SET_SWAP_AREA ioctl.
+2. If there's no swap file or the existing swap file isn't of a sufficient size, a swap file is created
+     1. If `touch-swap` is enabled, all the swap file's blocks will be touched
+        so that the root EBS volume is pre-warmed.
+3. It updates the offset of the swap file in the kernel using `snapshot_set_swap_area` ioctl.
 4. It updates the resume offset and resume device in grub file.
 
 ## Building in Red hat
