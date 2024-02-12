@@ -38,7 +38,12 @@ HIB_ENABLED_FILE = "hibernation-enabled"
 IMDS_BASEURL = 'http://169.254.169.254'
 IMDS_API_TOKEN_PATH = 'latest/api/token'
 IMDS_SPOT_ACTION_PATH = 'latest/meta-data/hibernation/configured'
-MAX_SWAP_SIZE_OFFSET_ALLOWED = 100 * 1024  # 100 KiB
+
+# Default Values
+KB = 1024
+MAX_SWAP_SIZE_OFFSET_ALLOWED = 100 * KB
+DEFAULT_SWAP_SIZE_MB = 4000
+DEFAULT_SWAP_PERCENTAGE = 100
 
 # Sigterm_handler Behaviour Modifiers
 SHUTDOWN_REQUESTED = False
@@ -107,7 +112,7 @@ def get_file_block_number(filename):
 
 def get_rootfs_size():
     stat = os.statvfs('/')
-    return math.ceil(float(stat.f_bsize * stat.f_blocks) / (1024 * 1024 * 1024))
+    return math.ceil(float(stat.f_bsize * stat.f_blocks) / (KB * KB * KB))
 
 
 # This is only for grub2
@@ -134,33 +139,33 @@ def patch_grub_config(swap_device, offset):
 
     print_to_sys_log("Updating GRUB to use the device %s with offset %d for resume" % (swap_device, offset))
 
-    mkconfig_cmd = "grub2-mkconfig -o {path}"
-    mkconfig_cmd = mkconfig_cmd.format(path="/boot/grub2/grub.cfg")
-    check_call(mkconfig_cmd, shell=True)
+    grub_mkconfig = "grub2-mkconfig -o /boot/grub2/grub.cfg"
+    check_call(grub_mkconfig, shell=True)
 
-    grub_update_kernel_cmd = "grubby --update-kernel=ALL --args='no_console_suspend={console} " + \
+    grub_update_kernel = "grubby --update-kernel=ALL --args='no_console_suspend=1 " + \
                              "resume_offset={offset} resume={swap_device}'"
-    grub_update_kernel_cmd = grub_update_kernel_cmd.format(console='1', offset=offset, swap_device=swap_device)
-    check_call(grub_update_kernel_cmd, shell=True)
+    grub_update_kernel = grub_update_kernel.format(offset=offset, swap_device=swap_device)
+    check_call(grub_update_kernel, shell=True)
 
-    fsfreeze_cmd = "sync && mountpoint -q {mount} && trap '' HUP INT QUIT TERM && fsfreeze -f {mount} && fsfreeze -u {mount}"
-    fsfreeze_cmd = fsfreeze_cmd.format(mount=mount_point)
-    check_call(fsfreeze_cmd, shell=True)
+    fsfreeze = "sync && mountpoint -q {mount} && trap '' HUP INT QUIT TERM && " + \
+               "fsfreeze -f {mount} && fsfreeze -u {mount}"
+    fsfreeze = fsfreeze.format(mount=mount_point)
+    check_call(fsfreeze, shell=True)
 
     # Some grubby versions need a restart after changing in kernel parameters
     # echo offset and swap device helps the customer to use the agent immediately
     # after rpm installation.
     if os.path.exists("sys/power/resume"):
-        echo_resume_device_cmd = "echo {swap_device} > /sys/power/resume"
-        echo_resume_device_cmd = echo_resume_device_cmd.format(swap_device=swap_device)
-        print_to_sys_log("sys/power/resume exist and would be updated")
-        check_call(echo_resume_device_cmd, shell=True)
+        echo_resume_device = "echo {swap_device} > /sys/power/resume"
+        echo_resume_device = echo_resume_device.format(swap_device=swap_device)
+        print_to_sys_log("sys/power/resume exist and will be updated")
+        check_call(echo_resume_device, shell=True)
 
     if os.path.exists("/sys/power/resume_offset"):
-        echo_resume_offset_cmd = "echo {offset} > /sys/power/resume_offset"
-        echo_resume_offset_cmd = echo_resume_offset_cmd.format(offset=offset)
-        print_to_sys_log("sys/power/resume_offset exist and would be updated")
-        check_call(echo_resume_offset_cmd, shell=True)
+        echo_resume_offset = "echo {offset} > /sys/power/resume_offset"
+        echo_resume_offset = echo_resume_offset.format(offset=offset)
+        print_to_sys_log("sys/power/resume_offset exist and will be updated")
+        check_call(echo_resume_offset, shell=True)
 
     print_to_sys_log("GRUB configuration is updated")
 
@@ -212,9 +217,9 @@ def find_device_for_file(filename):
 
 class SwapInitializer(object):
     def __init__(self, config):
-        self.swap_size = config.swap_mb * 1024 * 1024
+        self.swap_size = config.swap_mb * KB * KB
         self.config = config
-        self.block_size = 1024 * 1024  # 1 MiB
+        self.block_size = KB * KB  # 1 MiB
 
     def init_swap(self):
         """
@@ -233,15 +238,15 @@ class SwapInitializer(object):
         self.init_mkswap()
 
     def setup_btrfs(self):
-        no_cow_cmd = "truncate -s 0 {swapfile} && chattr +C {swapfile}".format(swapfile=SWAP_FILE)
+        no_cow = "truncate -s 0 {swapfile} && chattr +C {swapfile}".format(swapfile=SWAP_FILE)
         print_to_sys_log("Setting /swap to No Copy On Write")
-        check_call(no_cow_cmd, shell=True)
+        check_call(no_cow, shell=True)
 
     def do_allocate(self):
         print_to_sys_log("Allocating %d bytes in %s" % (self.swap_size, SWAP_FILE))
         with open(SWAP_FILE, 'w+') as fl:
             fallocate(fl, self.swap_size)
-        os.chmod(SWAP_FILE, 0o600)
+        os.chmod(SWAP_FILE, 0o600)  # Read + Write Permissions
 
     def pretouch_swap(self):
         written = 0
@@ -334,8 +339,8 @@ class Config(object):
             identify_file_system(SWAP_FILE, "btrfs"))
         self.state_dir = self.merge(None, get_from_config('core', 'state-dir'), DEFAULT_STATE_DIR)
 
-        self.swap_percentage = self.merge(args.swap_ram_percentage, get_int_from_config('swap', 'percentage-of-ram'), 100)
-        self.swap_mb = self.merge(args.swap_target_size_mb, get_int_from_config('swap', 'target-size-mb'), 4000)
+        self.swap_percentage = self.merge(args.swap_ram_percentage, get_int_from_config('swap', 'percentage-of-ram'), DEFAULT_SWAP_PERCENTAGE)
+        self.swap_mb = self.merge(args.swap_target_size_mb, get_int_from_config('swap', 'target-size-mb'), DEFAULT_SWAP_SIZE_MB)
         self.mkswap = self.merge(args.mkswap, get_from_config('swap', 'mkswap'), 'mkswap {swapfile}')
         self.swapon = self.merge(args.swapon, get_from_config('swap', 'swapon'), 'swapon {swapfile}')
         self.swapoff = self.merge(args.swapoff, get_from_config('swap', 'swapoff'), 'swapoff {swapfile}')
@@ -413,10 +418,10 @@ def hibernation_enabled(state_dir):
 
 # Returns a tuple denoting (valid_to_init_hibernation: bool, new_swap_file_required: bool)
 def validate_system_requirements(config):
-    target_swap_size = config.swap_mb * 1024 * 1024
+    target_swap_size = config.swap_mb * KB * KB  # Converting to bytes
     # Validate if disk space>total RAM
     ram_bytes = os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
-    if get_rootfs_size() <= (math.ceil(float(ram_bytes) / (1024 * 1024 * 1024))):
+    if get_rootfs_size() <= (math.ceil(float(ram_bytes) / (KB * KB * KB))):
         print_to_sys_log(
             "Insufficient disk space. Cannot create setup for hibernation. Please allocate a larger root device")
         return False, False
@@ -424,7 +429,7 @@ def validate_system_requirements(config):
     swap_percentage_size = ram_bytes * config.swap_percentage // 100
     if swap_percentage_size > target_swap_size:
         target_swap_size = int(swap_percentage_size)
-    print_to_sys_log("Will check if swap is at least: %d megabytes" % (target_swap_size // (1024 * 1024)))
+    print_to_sys_log("Will check if swap is at least: %d megabytes" % (target_swap_size // (KB * KB)))
 
     # Validate if swap file exists
     cur_swap = 0
@@ -450,7 +455,7 @@ def validate_system_requirements(config):
     st = os.statvfs(swap_dev)
     free_bytes = st.f_bavail * st.f_frsize
     # Rounding off to swap_size+10mb for swap headers
-    free_space_needed = target_swap_size + 10 * 1024 * 1024
+    free_space_needed = target_swap_size + 10 * KB * KB
     if free_space_needed >= free_bytes:
         print_to_sys_log("There's not enough space (%d present, %d needed) for the swap file on the device: %s" % (
             free_bytes, free_space_needed, swap_dev))
