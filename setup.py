@@ -14,7 +14,7 @@ with open("README.md", "r") as fp:
     hib_long_description = fp.read()
 
 setup(name="ec2-hibinit-agent",
-      version='1.0.2',
+      version='1.0.8',
       author="Anchal Agarwal",
       author_email="anchalag@amazon.com",
       tests_require=["pytest"],	
