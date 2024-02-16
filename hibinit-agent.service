@@ -17,7 +17,7 @@ After=cloud-config.service
 Wants=acpid.service
 
 [Service]
-Type=forking
+Type=simple
 ExecStart=/usr/bin/hibinit-agent -c /etc/hibinit-config.cfg
 TimeoutStartSec=0
 
