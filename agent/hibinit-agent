@@ -193,7 +193,7 @@ def update_kernel_swap_offset(config):
 
     print_to_sys_log("Setting swap device to %d with offset %d" % (dev, offset))
 
-    if not config.btrfs_enabled:
+    if not config.btrfs_enabled and os.path.exists("/dev/snapshot"):
         # Set the kernel swap offset, see https://www.kernel.org/doc/Documentation/power/userland-swsusp.txt
         # From linux/suspend_ioctls.h
         snapshot_set_swap_area = 0x400C330D
