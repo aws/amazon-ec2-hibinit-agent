@@ -48,7 +48,6 @@ DEFAULT_SWAP_PERCENTAGE = 100
 # Sigterm_handler Behaviour Modifiers
 SHUTDOWN_REQUESTED = False
 
-
 def print_to_sys_log(message):
     if LOG_TO_SYSLOG:
         syslog.syslog(message)
@@ -217,7 +216,11 @@ def find_device_for_file(filename):
 
 class SwapInitializer(object):
     def __init__(self, config):
-        self.swap_size = config.swap_mb * KB * KB
+        self.swap_size = calc_target_swap_size(
+            ram_bytes=os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES'),
+            swap_percentage=config.swap_percentage,
+            swap_mb=config.swap_mb)
+
         self.config = config
         self.block_size = KB * KB  # 1 MiB
 
@@ -415,10 +418,16 @@ def hibernation_enabled(state_dir):
     os.mknod(hib_sem_file)
     return True
 
+def calc_target_swap_size(ram_bytes: int, swap_percentage: int, swap_mb: int) -> int: 
+    target_swap_size = swap_mb * KB * KB  # Converting to bytes
+    swap_percentage_size = ram_bytes * swap_percentage // 100
+    if swap_percentage_size > target_swap_size:
+        target_swap_size = int(swap_percentage_size)
+
+    return target_swap_size
 
 # Returns a tuple denoting (valid_to_init_hibernation: bool, new_swap_file_required: bool)
 def validate_system_requirements(config):
-    target_swap_size = config.swap_mb * KB * KB  # Converting to bytes
     # Validate if disk space>total RAM
     ram_bytes = os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
     if get_rootfs_size() <= (math.ceil(float(ram_bytes) / (KB * KB * KB))):
@@ -426,9 +435,8 @@ def validate_system_requirements(config):
             "Insufficient disk space. Cannot create setup for hibernation. Please allocate a larger root device")
         return False, False
 
-    swap_percentage_size = ram_bytes * config.swap_percentage // 100
-    if swap_percentage_size > target_swap_size:
-        target_swap_size = int(swap_percentage_size)
+    target_swap_size = calc_target_swap_size(ram_bytes, config.swap_percentage, config.swap_mb)
+   
     print_to_sys_log("Will check if swap is at least: %d megabytes" % (target_swap_size // (KB * KB)))
 
     # Validate if swap file exists
