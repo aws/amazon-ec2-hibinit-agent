@@ -418,7 +418,7 @@ def hibernation_enabled(state_dir):
     os.mknod(hib_sem_file)
     return True
 
-def calc_target_swap_size(ram_bytes: int, swap_percentage: int, swap_mb: int) -> int: 
+def calc_target_swap_size(ram_bytes, swap_percentage, swap_mb): 
     target_swap_size = swap_mb * KB * KB  # Converting to bytes
     swap_percentage_size = ram_bytes * swap_percentage // 100
     if swap_percentage_size > target_swap_size:
