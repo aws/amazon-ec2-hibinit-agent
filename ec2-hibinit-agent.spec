@@ -1,5 +1,5 @@
 Name:           ec2-hibinit-agent
-Version:        1.0.10
+Version:        1.0.9-1
 Release:        1%{?dist}
 Summary:        Hibernation setup utility for AWS EC2
 
@@ -61,6 +61,9 @@ rm -rf $RPM_BUILD_ROOT
 %systemd_postun_with_restart hibinit-agent.service
 
 %changelog
+* Thu Sep 19 2024 Jarred Desrosiers <jarredtd@amazon.com> - 1.0.9-1
+- Add check for swap allocation to use bigger of configuration options percentage-of-ram and target-size-mb.
+
 * Thu May 16 2024 Seth Carolan <secarola@amazon.com> - 1.0.9
 - Confirm /dev/snapshot exists before updating resume parameters again. Parameters are already set via Grub config update.
 
