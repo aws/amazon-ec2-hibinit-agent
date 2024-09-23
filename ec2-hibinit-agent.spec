@@ -1,5 +1,5 @@
 Name:           ec2-hibinit-agent
-Version:        1.0.9-1
+Version:        1.0.9
 Release:        1%{?dist}
 Summary:        Hibernation setup utility for AWS EC2
 
