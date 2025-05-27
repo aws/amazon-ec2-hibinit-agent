@@ -10,7 +10,7 @@ swap_priority=32767
 
 hibernate()
 {
-        swapon --priority=$swap_priority /swap && /usr/sbin/pm-hibernate
+        swapon --priority=$swap_priority /swap && systemctl hibernate
         if [ $? -ne 0 ]
         then
             logger "Hibernation failed, Sleeping 2 mins before retry"
