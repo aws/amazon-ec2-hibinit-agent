@@ -1,4 +1,8 @@
 include README.md LICENSE.txt
+include setup.py
 include acpid.sleep.conf
 include acpid.sleep.sh
+include acpid-override.conf
 include hibinit-agent.service
+include sleep-handler.sh
+recursive-include packaging *

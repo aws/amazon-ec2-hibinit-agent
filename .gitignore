@@ -1,2 +1,17 @@
+*.tar.gz
+*.rpm
+*.egg-info/
+dist/
+build/
+
+__pycache__/
+*.pyc
+*.pyo
+
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
 
 .DS_Store
