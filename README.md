@@ -1,89 +1,72 @@
-The Amazon Linux hibernation agent.
+# Amazon EC2 Hibernation Agent
 
-The purpose of this agent is to create a setup for an instance to support hibernation feature. 
-The setup is created only on supported instance types. 
+Sets up hibernation support for EC2 instances on supported instance types. On startup, the agent ensures a properly sized swap file exists and configures the kernel and bootloader for hibernation resume. On receiving an ACPI sleep event, the agent enables swap and initiates hibernation. On resume, the agent disables the swap file.
 
-This agent does several things upon startup:
-1. It checks for sufficient swap space to allow hibernation and fails if not enough space
-2. If there's no swap file or the existing swap file isn't of a sufficient size, a swap file is created
-     1. If `touch-swap` is enabled, all the swap file's blocks will be touched
-        so that the root EBS volume is pre-warmed.
-3. It updates the offset of the swap file in the kernel using `snapshot_set_swap_area` ioctl.
-4. It updates the resume offset and resume device in grub file.
+## Configuration
 
-## Building in Red hat
+The agent is configured via [etc/hibinit-config.cfg](etc/hibinit-config.cfg).
 
-1- Install Development Tools in Red Hat to build the RPM package
+| Option | Description |
+|--------|-------------|
+| `log-to-syslog` | Log output to syslog |
+| `grub-update` | Update GRUB config with `resume_offset` for the swap file |
+| `touch-swap` | Write all swap file blocks to pre-warm the EBS volume. Auto-detected for XFS |
+| `btrfs-enabled` | Set No Copy-on-Write on the swap file. Auto-detected for btrfs |
+| `state-dir` | Directory for agent state files |
+| `percentage-of-ram` | Target swap size as a percentage of RAM |
+| `target-size-mb` | Target swap size in MB. The larger of this and `percentage-of-ram` is used |
+| `mkswap` | Command to initialize the swap file |
+| `swapon` | Command to enable swap |
+| `swapoff` | Command to disable swap |
+
+## Building
+
+Install development tools and build dependencies for your distro:
+
+<details>
+<summary>Amazon Linux 2</summary>
+
+```
+sudo yum group install "Development Tools"
+sudo yum install python2-devel systemd
+```
+</details>
+
+<details>
+<summary>Amazon Linux 2023</summary>
+
+```
+sudo yum group install "Development Tools"
+sudo yum install python3-devel systemd-rpm-macros
+```
+</details>
+
+<details>
+<summary>Red Hat</summary>
+
 ```
 sudo dnf group install "Development Tools"
-mkdir -p ~/rpmbuild/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
+sudo yum install python3-devel selinux-policy-devel
 ```
-2- Install required build packages for ec2-hibernate-linux-agent.
+</details>
+
+<details>
+<summary>SUSE Linux</summary>
 
 ```
-sudo yum install python3-devel
-sudo yum install selinux-policy-devel
+sudo zypper install rpm-build python3-devel tuned python-rpm-generators
 ```
+</details>
 
-3- Download the package from github repository. You can replace `1.0.3` with any release version number.
-
-```
-echo '%_topdir %(echo $HOME)/rpmbuild' > ~/.rpmmacros
-wget https://github.com/aws/amazon-ec2-hibinit-agent/archive/v1.0.3/ec2-hibinit-agent-1.0.3.tar.gz
-tar -xf ec2-hibinit-agent-1.0.3.tar.gz 
-```
-
-4- Copy spec file to SPEC directory.
+Then build the RPM for your target distro:
 
 ```
-cd ~/rpmbuild//SPECS
-cp ~/rpmbuild/SOURCES/amazon-ec2-hibinit-agent-1.0.3/packaging/rhel/ec2-hibinit-agent.spec ~/rpmbuild/SPECS/
-
-```
-5- Build the Spec file 
-
-```
-nohup rpmbuild -bb --target=noarch ec2-hibinit-agent.spec
-```
-You will find the RPM package generated at `~/rpmbuild/RPMS/noarch/` directory
-
-
-
-## Building in SUSE Linux 
-
-1- Install Development Tools in Suse Linux to build the RPM package
-```
-sudo zypper install rpm-build
-mkdir -p ~/rpmbuild/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
-```
-2- Install required build packages for ec2-hibernate-linux-agent.
-
-```
-sudo zypper install python3-devel
-sudo zypper install tuned
-sudo zypper install python-rpm-generators
+make rpm-al2 PYTHON=python2   # Amazon Linux 2
+make rpm-al2023               # Amazon Linux 2023
+make rpm-rhel                 # Red Hat Enterprise Linux
+make rpm-sles                 # SUSE Linux
 ```
 
-3- Download the package from github repository. You can replace `1.0.3` with any release version number.
+The RPM will be placed in the project root. Run `make` with no arguments to see all available targets.
 
-```
-echo '%_topdir %(echo $HOME)/rpmbuild' > ~/.rpmmacros
-cd ~/rpmbuild/SOURCES
-wget https://github.com/aws/amazon-ec2-hibinit-agent/archive/v1.0.3/ec2-hibinit-agent-1.0.3.tar.gz
-tar -xf ec2-hibinit-agent-1.0.3.tar.gz 
-```
-
-4- Copy spec file to SPEC directory. You can replace `1.0.3` with any release version number.
-
-```
-cd ~/rpmbuild//SPECS
-cp ~/rpmbuild/SOURCES/amazon-ec2-hibinit-agent-1.0.3/packaging/sles/ec2-hibinit-agent.spec ~/rpmbuild/SPECS/
-
-```
-5- Build the Spec file 
-
-```
-nohup rpmbuild -bb --target=noarch ec2-hibernate-linux-agent.spec
-```
-You will find the RPM package generated at `~/rpmbuild/RPMS/noarch/` directory
-
+> **Note:** Amazon Linux 2 [reaches end of life on 2026-06-30](https://aws.amazon.com/amazon-linux-2/faqs/#long-term-support--o3nq58:~:text=Amazon%20Linux%202%20end%20of%20support%20date%20(End%20of%20Life%2C%20or%20EOL)%20will%20be%20on%202026%2D06%2D30.).

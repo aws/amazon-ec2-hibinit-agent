@@ -11,13 +11,13 @@
 %global _format() export %1=""; for x in %{modulenames}; do %1+=%2; %1+=" "; done;
 
 Name:           ec2-hibinit-agent
-Version:        1.0.4
-Release:        1%{?dist}
+Version:        1.0.10
+Release:        2%{?dist}
 Summary:        Hibernation setup utility for Amazon EC2
 
 License:        ASL 2.0
 URL:            https://github.com/aws/amazon-%{name}
-Source0:        https://github.com/aws/%{project}/archive/v%{version}/%{name}-%{version}.tar.gz
+Source0:        https://github.com/aws/%{project}/archive/v%{version}/ec2_hibinit_agent-%{version}.tar.gz
 
 BuildArch:  noarch
 
@@ -36,14 +36,14 @@ Requires: tuned
 An EC2 agent that creates a setup for instance hibernation
 
 %prep
-%autosetup -n %{project}-%{version}
+%autosetup -n ec2_hibinit_agent-%{version}
  
 %build
 %py3_build
 
 # Makefile generates pp.bz2 from .tt file. 
 # Generating tt file https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/selinux_users_and_administrators_guide/security-enhanced_linux-the-sepolicy-suite-sepolicy_generate
-make -C %{_builddir}/%{project}-%{version}/packaging/rhel/ec2hibernatepolicy
+make -C %{_builddir}/ec2_hibinit_agent-%{version}/packaging/rhel/ec2hibernatepolicy
 
 %install
 %py3_install
@@ -54,25 +54,25 @@ mkdir -p %{buildroot}%{_sysconfdir}/acpi/events
 mkdir -p %{buildroot}%{_sharedstatedir}/hibinit-agent
 mkdir -p %{buildroot}%{_sysconfdir}/acpi/actions
 
-install -p -m 644 "%{_builddir}/%{project}-%{version}/hibinit-agent.service" %{buildroot}%{_unitdir}
-install -p -m 644 "%{_builddir}/%{project}-%{version}/acpid.sleep.conf" %{buildroot}%{_sysconfdir}/acpi/events/sleepconf
+install -p -m 644 "%{_builddir}/ec2_hibinit_agent-%{version}/hibinit-agent.service" %{buildroot}%{_unitdir}
+install -p -m 644 "%{_builddir}/ec2_hibinit_agent-%{version}/acpid.sleep.conf" %{buildroot}%{_sysconfdir}/acpi/events/sleepconf
 
 mkdir -p %{buildroot}%{_prefix}/lib/systemd/logind.conf.d
 mkdir -p %{buildroot}%{_prefix}/lib/systemd/system-sleep
 
-install -p -m 644 "%{_builddir}/%{project}-%{version}/etc/hibinit-config.cfg" %{buildroot}/%{_sysconfdir}/hibinit-config.cfg
-install -p -m 644 "%{_builddir}/%{project}-%{version}/packaging/rhel/00-hibinit-agent.conf" %{buildroot}%{_prefix}/lib/systemd/logind.conf.d/00-hibinit-agent.conf
-install -p -m 755 "%{_builddir}/%{project}-%{version}/packaging/rhel/acpid.sleep.sh" %{buildroot}%{_sysconfdir}/acpi/actions/sleep.sh
-install -p -m 755 "%{_builddir}/%{project}-%{version}/packaging/rhel/sleep-handler.sh" %{buildroot}%{_prefix}/lib/systemd/system-sleep/sleep-handler.sh
+install -p -m 644 "%{_builddir}/ec2_hibinit_agent-%{version}/etc/hibinit-config.cfg" %{buildroot}/%{_sysconfdir}/hibinit-config.cfg
+install -p -m 644 "%{_builddir}/ec2_hibinit_agent-%{version}/packaging/rhel/00-hibinit-agent.conf" %{buildroot}%{_prefix}/lib/systemd/logind.conf.d/00-hibinit-agent.conf
+install -p -m 755 "%{_builddir}/ec2_hibinit_agent-%{version}/acpid.sleep.sh" %{buildroot}%{_sysconfdir}/acpi/actions/sleep.sh
+install -p -m 755 "%{_builddir}/ec2_hibinit_agent-%{version}/sleep-handler.sh" %{buildroot}%{_prefix}/lib/systemd/system-sleep/sleep-handler.sh
 
 #Disable transparent huge page
 mkdir -p  %{buildroot}%{_sysconfdir}/tuned/nothp_profile
-install -p -m 644 "%{_builddir}/%{project}-%{version}/packaging/rhel/tuned.conf" %{buildroot}%{_sysconfdir}/tuned/nothp_profile/tuned.conf
+install -p -m 644 "%{_builddir}/ec2_hibinit_agent-%{version}/packaging/rhel/tuned.conf" %{buildroot}%{_sysconfdir}/tuned/nothp_profile/tuned.conf
 
 # Install policy modules
 %_format MODULES $x.pp.bz2
 install -d %{buildroot}%{_datadir}/selinux/packages
-install -m 0644 %{_builddir}/%{project}-%{version}/packaging/rhel/ec2hibernatepolicy/$MODULES \
+install -m 0644 %{_builddir}/ec2_hibinit_agent-%{version}/packaging/rhel/ec2hibernatepolicy/$MODULES \
         %{buildroot}%{_datadir}/selinux/packages
 
 
@@ -139,6 +139,37 @@ fi
 %selinux_relabel_post -s %{selinuxtype}
 
 %changelog
+* Mon Feb 9 2026 Jarred Desrosiers <jarredtd@amazon.com> - 1.0.10-2
+- Prevent processing of sleep signals sent back-to-back too closely
+
+* Mon Jan 12 2026 Seth Carolan <secarola@amazon.com> - 1.0.10-1
+- Add extra event case in sleep script for ARM hardware
+
+* Wed Jun 4 2025 Jarred Desrosiers <jarredtd@amazon.com> - 1.0.10
+- Fix swap not turning off on resume for Amazon Linux
+- RHEL fixes
+
+* Thu Sep 19 2024 Jarred Desrosiers <jarredtd@amazon.com> - 1.0.9-1
+- Add check for swap allocation to use bigger of configuration options percentage-of-ram and target-size-mb.
+
+* Thu May 16 2024 Seth Carolan <secarola@amazon.com> - 1.0.9
+- Confirm /dev/snapshot exists before updating resume parameters again. Parameters are already set via Grub config update.
+
+* Wed Jan 31 2024 Jeff Kim <kjeffsh@amazon.com> - 1.0.8-1
+- Refactoring agent for legibility & changing service type to simple
+
+* Thu Dec 27 2023 Jeff Kim <kjeffsh@amazon.com> - 1.0.8
+- Added better termination behaviour with a stop timeout of 2 minutes
+
+* Wed Oct 18 2023 Jeff Kim <kjeffsh@amazon.com> - 1.0.7
+- Changed message when removing swap file
+- Adding btrfs-enabled to set No_COW and get offset using btrfs
+
+* Thu Sep 28 2023 Deborshi Saha <ddebs@amazon.com> - 1.0.6
+- Add initial Amazon Linux 2023 support
+- Recreate the swap file if the current size is sufficiently larger
+- Update /sys/power/resume_offset and /sys/power/resume only if present
+
 * Thu Jan 14 2021 Mohamed Aboubakr <mabouba@amazon.com> - 1.0.4-1
 - Call grub2-mkconfig in hibernate agent before calling grubby
 

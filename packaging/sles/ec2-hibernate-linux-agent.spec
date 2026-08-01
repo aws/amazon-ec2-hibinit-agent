@@ -25,14 +25,14 @@
 %global _format() export %1=""; for x in %{modulenames}; do %1+=%2; %1+=" "; done;
 
 Name:           ec2-hibernate-linux-agent
-Version:        1.0.4
-Release:        1%{?dist}
+Version:        1.0.10
+Release:        2%{?dist}
 Summary:        Hibernating Agent for Linux on Amazon EC2
 
 Group:          System/Management
 License:        MIT
 URL:            https://github.com/aws/%{project}
-Source0:        https://github.com/aws/%{project}/archive/v%{version}/ec2-hibinit-agent-%{version}.tar.gz
+Source0:        https://github.com/aws/%{project}/archive/v%{version}/ec2_hibinit_agent-%{version}.tar.gz
 
 BuildArch:  noarch
 
@@ -64,7 +64,7 @@ This agent does several things:
    termination notifications.
 
 %prep
-%autosetup -n %{project}-%{version}
+%autosetup -n ec2_hibinit_agent-%{version}
  
 %build
 %py3_build
@@ -79,20 +79,20 @@ mkdir -p %{buildroot}%{_sharedstatedir}/hibinit-agent
 mkdir -p %{buildroot}%{_sysconfdir}/acpi/actions
 mkdir -p %{buildroot}%{_sbindir}
 
-install -p -m 644 "%{_builddir}/%{project}-%{version}/hibinit-agent.service" %{buildroot}%{_unitdir}
-install -p -m 644 "%{_builddir}/%{project}-%{version}/acpid.sleep.conf" %{buildroot}%{_sysconfdir}/acpi/events/sleepconf
+install -p -m 644 "%{_builddir}/ec2_hibinit_agent-%{version}/hibinit-agent.service" %{buildroot}%{_unitdir}
+install -p -m 644 "%{_builddir}/ec2_hibinit_agent-%{version}/acpid.sleep.conf" %{buildroot}%{_sysconfdir}/acpi/events/sleepconf
 
 mkdir -p %{buildroot}%{_prefix}/lib/systemd/logind.conf.d
 mkdir -p %{buildroot}%{_prefix}/lib/systemd/system-sleep
 
-install -p -m 644 "%{_builddir}/%{project}-%{version}/etc/hibinit-config.cfg" %{buildroot}/%{_sysconfdir}/hibinit-config.cfg
-install -p -m 644 "%{_builddir}/%{project}-%{version}/packaging/rhel/00-hibinit-agent.conf" %{buildroot}%{_prefix}/lib/systemd/logind.conf.d/00-hibinit-agent.conf
-install -p -m 755 "%{_builddir}/%{project}-%{version}/packaging/rhel/acpid.sleep.sh" %{buildroot}%{_sysconfdir}/acpi/actions/sleep.sh
-install -p -m 755 "%{_builddir}/%{project}-%{version}/packaging/rhel/sleep-handler.sh" %{buildroot}%{_prefix}/lib/systemd/system-sleep/sleep-handler.sh
+install -p -m 644 "%{_builddir}/ec2_hibinit_agent-%{version}/etc/hibinit-config.cfg" %{buildroot}/%{_sysconfdir}/hibinit-config.cfg
+install -p -m 644 "%{_builddir}/ec2_hibinit_agent-%{version}/packaging/rhel/00-hibinit-agent.conf" %{buildroot}%{_prefix}/lib/systemd/logind.conf.d/00-hibinit-agent.conf
+install -p -m 755 "%{_builddir}/ec2_hibinit_agent-%{version}/acpid.sleep.sh" %{buildroot}%{_sysconfdir}/acpi/actions/sleep.sh
+install -p -m 755 "%{_builddir}/ec2_hibinit_agent-%{version}/sleep-handler.sh" %{buildroot}%{_prefix}/lib/systemd/system-sleep/sleep-handler.sh
 
 #Disable transparent huge page
 mkdir -p  %{buildroot}%{_sysconfdir}/tuned/nothp_profile
-install -p -m 644 "%{_builddir}/%{project}-%{version}/packaging/rhel/tuned.conf" %{buildroot}%{_sysconfdir}/tuned/nothp_profile/tuned.conf
+install -p -m 644 "%{_builddir}/ec2_hibinit_agent-%{version}/packaging/rhel/tuned.conf" %{buildroot}%{_sysconfdir}/tuned/nothp_profile/tuned.conf
 
 ln -sf %{_sbindir}/service %{buildroot}%{_sbindir}/rchibinit-agent
 

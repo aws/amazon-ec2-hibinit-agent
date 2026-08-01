@@ -1,42 +1,111 @@
 #!/bin/sh
 
 PATH=/sbin:/bin:/usr/bin
-failed='false'
 
 # Hibernation selects the swapfile with highest priority. Since there may be
 # other swapfiles configured, ensure /swap is selected as hibernation
 # target by setting to maximum priority.
 swap_priority=32767
 
-hibernate()
-{
-        swapon --priority=$swap_priority /swap && /usr/sbin/pm-hibernate
-        if [ $? -ne 0 ]
-        then
-            logger "Hibernation failed, Sleeping 2 mins before retry"
-            failed='true'
-        else
-            failed='false'
-        fi
-        swapoff /swap
+LOCKFILE=/var/run/hibernate.lock
+HIBERNATE_STATE_DIR=/var/run/hibernate
+HIBERNATED_AT="$HIBERNATE_STATE_DIR/hibernated_at"
+RESUMED_AT="$HIBERNATE_STATE_DIR/resumed_at"
+STALE_THRESHOLD=30
+LOGNAME="hibernate"
+
+log() {
+    local level="$1"
+    local message="$2"
+    logger -t "$LOGNAME" -p "user.$level" "[PID $$] $message"
 }
 
-case "$2" in
-    SBTN)
-        # The iteration had been placed here to add retry logic to hibernation 
-        # in case of failures and to avoid force stop of instances after 20min
-        for i in 1 2 3
-        do
-          hibernate
-          if [ $failed == 'true' ];
-          then
+should_hibernate() {
+    local now=$(date +%s)
+
+    if [ -f "$RESUMED_AT" ]; then
+        local resumed=$(cat "$RESUMED_AT")
+        local since_resume=$((now - resumed))
+
+        if [ $since_resume -lt $STALE_THRESHOLD ]; then
+            log notice "Resumed ${since_resume}s ago, skipping"
+            return 1
+        fi
+
+        return 0
+    fi
+
+    if [ -f "$HIBERNATED_AT" ]; then
+        local hibernated=$(cat "$HIBERNATED_AT")
+        local since_hibernate=$((now - hibernated))
+
+        if [ $since_hibernate -lt $STALE_THRESHOLD ]; then
+            log notice "Hibernation started ${since_hibernate}s ago, skipping"
+            return 1
+        fi
+
+        log notice "Stale hibernated_at (${since_hibernate}s old), clearing"
+        rm -f "$HIBERNATED_AT"
+        return 0
+    fi
+
+    return 0
+}
+
+do_hibernate() {
+    local event="$1"
+
+    for i in 1 2 3; do
+        log notice "Attempt $i/3: Enabling swap"
+
+        if ! swapon --priority=$swap_priority /swap; then
+            log err "Attempt $i/3: Failed to enable swap, retrying in 10s"
+            sleep 10
+            continue
+        fi
+
+        log notice "Attempt $i/3: Swap enabled, initiating hibernation"
+        sleep 1
+
+        if systemctl hibernate; then
+            log notice "Hibernate initiated"
+            return 0
+        else
+            log err "Attempt $i/3: Hibernation initiation failed, disabling swap, retrying in 10s"
             swapoff /swap
-            sleep 2m
-          else
-           break
-          fi
-       done
-       ;;
+            sleep 10
+        fi
+    done
+
+    log err "All hibernation attempts failed"
+    rm -f "$HIBERNATED_AT"
+    return 1
+}
+
+mkdir -p "$HIBERNATE_STATE_DIR"
+
+case "$2" in
+    LNXSLPBN:*|SBTN)
+        if ! should_hibernate; then
+            log notice "ACPI event $2 ignored"
+            exit 0
+        fi
+
+        rm -f "$RESUMED_AT"
+        hibernated_time=$(date +%s)
+        log notice "Hibernation requested at $hibernated_time"
+        echo "$hibernated_time" > "$HIBERNATED_AT"
+
+        exec 200>"$LOCKFILE"
+
+        if flock -n 200; then
+            log notice "ACPI event $2 received, initiating hibernation"
+            do_hibernate "$2"
+        else
+            log notice "ACPI event $2 ignored, hibernation already in progress"
+        fi
+        ;;
     *)
-        logger "ACPI action undefined: $2" ;;
+        log warning "Unknown ACPI event: $2"
+        ;;
 esac
