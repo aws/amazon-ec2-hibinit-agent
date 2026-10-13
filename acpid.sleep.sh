@@ -63,7 +63,8 @@ do_hibernate() {
     for i in 1 2 3; do
         # Swap must be on to hibernate. Only enable it if /swap is not
         # already active so a pre-existing swap is left untouched.
-        if swapon --show | grep -q '/swap'; then
+        # Exact match, so e.g. /swapfile is not mistaken for /swap.
+        if swapon --show=NAME --noheadings | grep -qx '/swap'; then
             log notice "Attempt $i/3: /swap already active"
         else
             log notice "Attempt $i/3: Enabling swap"
